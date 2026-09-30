@@ -146,29 +146,46 @@ const PROMPT = `這是一張每週行程表的截圖：欄為 Mon–Sun，列左
 - 忽略手寫斜線等非文字記號。
 - 若某欄整天都沒有內容，仍輸出該欄為 {}。`;
 
+const PRICE_IN = 2 / 1e6, PRICE_OUT = 10 / 1e6;   // USD per token (Sonnet 5.5)
+const COST_CAP = 0.30, STEP_TOKENS = 4096;
+let lastCost = 0;
+
 async function analyze(dataUrl) {
   const key = store.get('key', '');
   if (!key) throw new Error('Please enter your Claude API key');
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: [
-        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: dataUrl.split(',')[1] } },
-        { type: 'text', text: PROMPT },
-      ] }],
-    }),
-  });
-  if (!r.ok) throw new Error(`Analysis failed (${r.status})`);
-  const txt = (await r.json()).content.map(b => b.text || '').join('');
-  const m = txt.match(/\{[\s\S]*\}/);
+  const first = { role: 'user', content: [
+    { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: dataUrl.split(',')[1] } },
+    { type: 'text', text: PROMPT },
+  ] };
+  let text = '', cost = 0, cap = COST_CAP, messages = [first];
+  for (;;) {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({ model: MODEL, max_tokens: STEP_TOKENS, thinking: { type: 'between_tools' }, messages }),
+    });
+    if (!r.ok) throw new Error(`Analysis failed (${r.status})`);
+    const j = await r.json();
+    cost += j.usage.input_tokens * PRICE_IN + j.usage.output_tokens * PRICE_OUT;
+    text += j.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    setStatus(`Analyzing… $${cost.toFixed(3)}`);
+    if (j.stop_reason === 'refusal') throw new Error('The model declined this image');
+    if (j.stop_reason !== 'max_tokens') break;
+    if (cost >= cap) {                       // budget reached: pause and ask
+      if (!confirm(`This import has cost $${cost.toFixed(2)} (limit $${cap.toFixed(2)}).\nContinue for up to $${COST_CAP.toFixed(2)} more?`))
+        throw new Error(`Stopped at $${cost.toFixed(2)}`);
+      cap += COST_CAP;
+    }
+    messages = [first, { role: 'assistant', content: text },
+      { role: 'user', content: 'Continue exactly where you left off. Output only the remaining text.' }];
+  }
+  lastCost = cost;
+  const m = text.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('Could not parse the response');
   return JSON.parse(m[0]);
 }
@@ -195,7 +212,7 @@ $('file').addEventListener('change', async e => {
     range = { from: Math.min(range.from, ...hours), to: Math.max(range.to, ...hours) };
     store.set('range', range); fillRange();
     renderAll();
-    setStatus(`Done: ${hours.length} entries. Check them in Week.`);
+    setStatus(`Done: ${hours.length} entries ($${lastCost.toFixed(3)}). Check them in Week.`);
   } catch (err) {
     setStatus(err.message);
   } finally {
