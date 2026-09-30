@@ -1,5 +1,5 @@
 'use strict';
-const DAYS = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const MODEL = 'claude-sonnet-5-5';
 const $ = id => document.getElementById(id);
@@ -14,7 +14,7 @@ let range = store.get('range', { from: 9, to: 23 });
 const pad = n => String(n).padStart(2, '0');
 const todayIdx = () => (new Date().getDay() + 6) % 7;
 const isMeal = s => /^meal$/i.test(s || '');
-const label = s => (isMeal(s) ? '用餐' : s);
+const label = s => s;
 const cell = (d, h) => (plan[KEYS[d]] || {})[h] || '';
 
 /* ---------- NOW view ---------- */
@@ -27,17 +27,17 @@ function blockEnd(d, h) {           // end hour of consecutive identical entries
 
 function renderNow() {
   const now = new Date(), d = todayIdx(), h = now.getHours();
-  $('date').textContent = `${now.getMonth() + 1}月${now.getDate()}日 ${DAYS[d]}`;
+  $('date').textContent = `${DAYS[d]}, ${now.toLocaleString('en-US', { month: 'short' })} ${now.getDate()}`;
   $('clock').textContent = `${pad(h)}:${pad(now.getMinutes())}`;
 
   const cur = cell(d, h);
   const hasPlan = Object.keys(plan).length > 0;
-  $('now-title').textContent = !hasPlan ? '尚未匯入' : cur ? label(cur) : '自由時間';
+  $('now-title').textContent = !hasPlan ? 'No plan yet' : cur ? label(cur) : '';
   if (cur) {
     const e = blockEnd(d, h);
     $('now-sub').textContent = `${pad(h)}:00 – ${pad(e)}:00`;
   } else {
-    $('now-sub').textContent = hasPlan ? '' : '到「匯入」上傳本週行程表';
+    $('now-sub').textContent = hasPlan ? '' : 'Go to Import to upload this week\'s plan';
   }
   $('bar').style.width = `${((now.getMinutes() * 60 + now.getSeconds()) / 3600) * 100}%`;
 
@@ -49,7 +49,7 @@ function renderNow() {
   }
   $('next-list').innerHTML = next.length
     ? next.map(([i, t]) => `<li><span>${esc(label(t))}</span><span>${pad(i)}:00</span></li>`).join('')
-    : '<li><span style="color:var(--mute)">今天沒有更多行程</span><span></span></li>';
+    : '<li><span style="color:var(--mute)">Nothing else today</span><span></span></li>';
 
   $('today').innerHTML = hoursList().map(i => {
     const t = cell(d, i);
@@ -113,8 +113,8 @@ $('key').value = store.get('key', '');
 $('key').addEventListener('change', () => store.set('key', $('key').value.trim()));
 
 $('clear').addEventListener('click', () => {
-  if (!confirm('確定清除本週行程？')) return;
-  plan = {}; store.set('plan', plan); renderAll(); setStatus('已清除');
+  if (!confirm('Clear this week\'s plan?')) return;
+  plan = {}; store.set('plan', plan); renderAll(); setStatus('Cleared');
 });
 
 function toJpeg(file, max = 1800) {
@@ -130,12 +130,12 @@ function toJpeg(file, max = 1800) {
       const url = c.toDataURL('image/jpeg', 0.9);
       res(url);
     };
-    img.onerror = () => rej(new Error('無法讀取圖片'));
+    img.onerror = () => rej(new Error('Could not read the image'));
     img.src = URL.createObjectURL(file);
   });
 }
 
-const PROMPT = `這是一張每週行程表的截圖：欄為 Mon–Sun（週一到週日），列左側的數字是小時（例如 9. 代表 9:00–10:00）。
+const PROMPT = `這是一張每週行程表的截圖：欄為 Mon–Sun，列左側的數字是小時（例如 9. 代表 9:00–10:00）。
 請把表格內容轉成 JSON，只輸出 JSON，不要任何說明：
 {"mon":{"9":"文字","10":"文字"},"tue":{...},"wed":{...},"thu":{...},"fri":{...},"sat":{...},"sun":{...}}
 規則：
@@ -148,7 +148,7 @@ const PROMPT = `這是一張每週行程表的截圖：欄為 Mon–Sun（週一
 
 async function analyze(dataUrl) {
   const key = store.get('key', '');
-  if (!key) throw new Error('請先填入 Claude API Key');
+  if (!key) throw new Error('Please enter your Claude API key');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -166,10 +166,10 @@ async function analyze(dataUrl) {
       ] }],
     }),
   });
-  if (!r.ok) throw new Error(`辨識失敗 (${r.status})`);
+  if (!r.ok) throw new Error(`Analysis failed (${r.status})`);
   const txt = (await r.json()).content.map(b => b.text || '').join('');
   const m = txt.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('無法解析回應');
+  if (!m) throw new Error('Could not parse the response');
   return JSON.parse(m[0]);
 }
 
@@ -177,10 +177,10 @@ $('file').addEventListener('change', async e => {
   const f = e.target.files[0];
   if (!f) return;
   try {
-    setStatus('讀取中…');
+    setStatus('Reading image…');
     const url = await toJpeg(f);
     $('preview').src = url; $('preview').style.display = 'block';
-    setStatus('辨識中，約需數秒…');
+    setStatus('Analyzing, a few seconds…');
     const raw = await analyze(url);
     const next = {}; let hours = [];
     KEYS.forEach(k => {
@@ -190,12 +190,12 @@ $('file').addEventListener('change', async e => {
         if (n >= 0 && n <= 23 && String(t).trim()) { next[k][n] = String(t).trim(); hours.push(n); }
       }
     });
-    if (!hours.length) throw new Error('沒有辨識到任何行程');
+    if (!hours.length) throw new Error('No entries found in the image');
     plan = next; store.set('plan', plan);
     range = { from: Math.min(range.from, ...hours), to: Math.max(range.to, ...hours) };
     store.set('range', range); fillRange();
     renderAll();
-    setStatus(`完成，共 ${hours.length} 筆。可到「本週」檢查與修改。`);
+    setStatus(`Done: ${hours.length} entries. Check them in Week.`);
   } catch (err) {
     setStatus(err.message);
   } finally {
