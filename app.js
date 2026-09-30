@@ -110,7 +110,7 @@ function fillRange() {
 }
 
 $('key').value = store.get('key', '');
-$('key').addEventListener('change', () => store.set('key', $('key').value.trim()));
+$('key').addEventListener('input', () => store.set('key', $('key').value.replace(/\s+/g, '')));
 
 $('clear').addEventListener('click', () => {
   if (!confirm('Clear this week\'s plan?')) return;
@@ -151,7 +151,7 @@ const COST_CAP = 0.30, STEP_TOKENS = 4096;
 let lastCost = 0;
 
 async function analyze(dataUrl) {
-  const key = store.get('key', '');
+  const key = $('key').value.replace(/\s+/g, '');
   if (!key) throw new Error('Please enter your Claude API key');
   const first = { role: 'user', content: [
     { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: dataUrl.split(',')[1] } },
@@ -169,7 +169,12 @@ async function analyze(dataUrl) {
       },
       body: JSON.stringify({ model: MODEL, max_tokens: STEP_TOKENS, thinking: { type: 'between_tools' }, messages }),
     });
-    if (!r.ok) throw new Error(`Analysis failed (${r.status})`);
+    if (!r.ok) {
+      let msg = '';
+      try { msg = (await r.json()).error.message; } catch {}
+      throw new Error(r.status === 401 ? 'API key rejected (401). Check the key and that billing is set up.'
+        : `Analysis failed (${r.status}) ${msg}`);
+    }
     const j = await r.json();
     cost += j.usage.input_tokens * PRICE_IN + j.usage.output_tokens * PRICE_OUT;
     text += j.content.filter(b => b.type === 'text').map(b => b.text).join('');
