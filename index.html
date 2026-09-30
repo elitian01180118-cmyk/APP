@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Plan">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Weekly Plan</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <!-- NOW -->
+  <section id="view-now" class="view active">
+    <p class="date" id="date"></p>
+    <p class="clock" id="clock"></p>
+    <div class="now">
+      <p class="label">現在</p>
+      <h1 id="now-title">—</h1>
+      <p class="sub" id="now-sub"></p>
+      <div class="bar"><i id="bar"></i></div>
+    </div>
+    <div class="next">
+      <p class="label">接下來</p>
+      <ul id="next-list"></ul>
+    </div>
+    <p class="label today-label">今日</p>
+    <ol id="today" class="today"></ol>
+  </section>
+
+  <!-- WEEK -->
+  <section id="view-week" class="view">
+    <h2>本週</h2>
+    <div class="grid-wrap"><table id="grid"></table></div>
+    <p class="hint">點選格子可修改</p>
+  </section>
+
+  <!-- IMPORT -->
+  <section id="view-import" class="view">
+    <h2>匯入行程表</h2>
+    <p class="hint left">每週日上傳表格截圖，App 會自動讀取並建立本週行程。</p>
+    <label class="btn primary" for="file">選擇截圖</label>
+    <input id="file" type="file" accept="image/*" hidden>
+    <img id="preview" alt="">
+    <p id="status" class="status"></p>
+
+    <h3>Claude API Key</h3>
+    <input id="key" type="password" placeholder="sk-ant-…" autocomplete="off">
+    <p class="hint left">只會儲存在這支手機上，僅用於辨識圖片。</p>
+
+    <h3>時間範圍</h3>
+    <div class="row">
+      <select id="from"></select><span>至</span><select id="to"></select>
+    </div>
+
+    <button id="clear" class="btn">清除本週行程</button>
+  </section>
+</main>
+
+<nav>
+  <button data-v="now" class="on">現在</button>
+  <button data-v="week">本週</button>
+  <button data-v="import">匯入</button>
+</nav>
+
+<dialog id="dlg">
+  <form method="dialog">
+    <p id="dlg-title" class="label"></p>
+    <input id="dlg-input" placeholder="空白＝清除" autocomplete="off">
+    <div class="row end">
+      <button value="cancel" class="btn">取消</button>
+      <button value="ok" class="btn primary">儲存</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
