@@ -110,73 +110,7 @@ function fillRange() {
 }
 
 $('key').value = store.get('key', '');
-// Pasted keys sometimes contain look-alike letters (e.g. Cyrillic а, р, З) or stray spaces.
-// Convert known look-alikes back to ASCII, then drop anything that is still not printable ASCII.
-const LOOK = {
-  'а':'a','с':'c','е':'e','о':'o','р':'p','х':'x','у':'y','і':'i','ј':'j','ѕ':'s','ԁ':'d','ԛ':'q','ԝ':'w','ɡ':'g',
-  'А':'A','В':'B','С':'C','Е':'E','Н':'H','І':'I','Ј':'J','К':'K','М':'M','О':'O','Р':'P','Ѕ':'S','Т':'T','Х':'X','У':'Y','З':'3',
-  'Α':'A','Β':'B','Ε':'E','Η':'H','Ι':'I','Κ':'K','Μ':'M','Ν':'N','Ο':'O','Ρ':'P','Τ':'T','Χ':'X','Υ':'Y','Ζ':'Z','ο':'o','ν':'v','ι':'i',
-  '‐':'-','‑':'-','‒':'-','–':'-','—':'-','−':'-',
-};
-const fixLook = v => [...v.normalize('NFKC')].map(c => LOOK[c] || c).join('');
-const cleanKey = v => fixLook(v).replace(/[^\x21-\x7e]/g, '');
-function showKeyInfo() {
-  const raw = $('key').value, k = cleanKey(raw), fixed = fixLook(raw);
-  const convList = [...raw.normalize('NFKC')].map((c, i) => [c, i]).filter(([c]) => LOOK[c]);   // look-alikes converted
-  const conv = convList.length;
-  const convDetail = convList.map(([c, i]) => `${c.codePointAt(0).toString(16).toUpperCase()}>${LOOK[c]}@${i + 1}`).join(' ');
-  const dropped = fixed.length - k.length;                                    // spaces / invisible chars removed
-  const ok = /^sk-ant-api\d\d-/.test(k);
-  const notes = [conv ? `${conv} look-alike characters converted (${convDetail})` : '', dropped ? `${dropped} stray characters removed` : ''].filter(Boolean).join(', ');
-  $('keyinfo').textContent = !k ? 'No key entered'
-    : `${k.slice(0, 13)}…${k.slice(-4)} · ${k.length} chars` + (notes ? ` · ${notes}` : '') + (ok ? '' : ' · ⚠ should start with sk-ant-api03-');
-}
-$('key').addEventListener('input', () => { store.set('key', cleanKey($('key').value)); showKeyInfo(); });
-$('showkey').addEventListener('change', e => { $('key').type = e.target.checked ? 'text' : 'password'; });
-// Some look-alikes are ambiguous (Cyrillic І could have been I or l, О could have been O or 0).
-const ALT = { 'І': ['I', 'l'], 'Ι': ['I', 'l'], 'ӏ': ['l', 'I'], 'О': ['O', '0'], 'Ο': ['O', '0'] };
-function keyCandidates(raw) {
-  let out = [''];
-  for (const c of raw.normalize('NFKC')) {
-    const opts = ALT[c] || [LOOK[c] || c];
-    if (out.length * opts.length > 512) return out.map(k => k + opts[0]);
-    out = out.flatMap(k => opts.map(o => k + o));
-  }
-  return out.map(k => k.replace(/[^\x21-\x7e]/g, ''));
-}
-async function pingKey(key) {
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': key,
-      'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: MODEL, max_tokens: 16, thinking: { type: 'between_tools' },
-      messages: [{ role: 'user', content: 'hi' }] }),
-  });
-  let msg = ''; if (!r.ok) { try { msg = (await r.json()).error.message; } catch {} }
-  return { status: r.status, msg };
-}
-$('testkey').addEventListener('click', async () => {
-  const cands = [...new Set(keyCandidates($('key').value))];
-  try {
-    let last = null;
-    for (let n = 0; n < cands.length; n++) {
-      setStatus(cands.length > 1 ? `Testing key… variant ${n + 1}/${cands.length}` : 'Testing key…');
-      last = await pingKey(cands[n]);
-      if (last.status !== 401) {
-        if (last.status >= 200 && last.status < 300) {
-          if (cands[n] !== cleanKey($('key').value)) {          // an alternative reading was the right one
-            $('key').value = cands[n]; store.set('key', cands[n]); showKeyInfo();
-          }
-          return setStatus('Key works.');
-        }
-        return setStatus(`Key accepted but request failed (${last.status}): ${last.msg}`);
-      }
-    }
-    setStatus(cands.length > 1 ? `Rejected (401): none of ${cands.length} readings of this key worked.`
-      : `Rejected (401): ${last.msg}. No ambiguous characters found, so the key text itself is not valid.`);
-  } catch (e) { setStatus(`Network error: ${e.message}`); }
-});
-
+$('key').addEventListener('input', () => store.set('key', $('key').value.replace(/\s+/g, '')));
 
 $('clear').addEventListener('click', () => {
   if (!confirm('Clear this week\'s plan?')) return;
@@ -217,7 +151,7 @@ const COST_CAP = 0.30, STEP_TOKENS = 4096;
 let lastCost = 0;
 
 async function analyze(dataUrl) {
-  const key = cleanKey($('key').value);
+  const key = $('key').value.replace(/\s+/g, '');
   if (!key) throw new Error('Please enter your Claude API key');
   const first = { role: 'user', content: [
     { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: dataUrl.split(',')[1] } },
@@ -225,9 +159,7 @@ async function analyze(dataUrl) {
   ] };
   let text = '', cost = 0, cap = COST_CAP, messages = [first];
   for (;;) {
-    let r;
-    try {
-    r = await fetch('https://api.anthropic.com/v1/messages', {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -237,7 +169,6 @@ async function analyze(dataUrl) {
       },
       body: JSON.stringify({ model: MODEL, max_tokens: STEP_TOKENS, thinking: { type: 'between_tools' }, messages }),
     });
-    } catch (e) { throw new Error(`Network error: ${e.message}`); }
     if (!r.ok) {
       let msg = '';
       try { msg = (await r.json()).error.message; } catch {}
@@ -245,7 +176,6 @@ async function analyze(dataUrl) {
         : `Analysis failed (${r.status}) ${msg}`);
     }
     const j = await r.json();
-    if (!j || !Array.isArray(j.content) || !j.usage) throw new Error('Unexpected response: ' + JSON.stringify(j).slice(0, 200));
     cost += j.usage.input_tokens * PRICE_IN + j.usage.output_tokens * PRICE_OUT;
     text += j.content.filter(b => b.type === 'text').map(b => b.text).join('');
     setStatus(`Analyzing… $${cost.toFixed(3)}`);
@@ -289,7 +219,7 @@ $('file').addEventListener('change', async e => {
     renderAll();
     setStatus(`Done: ${hours.length} entries ($${lastCost.toFixed(3)}). Check them in Week.`);
   } catch (err) {
-    setStatus(err.name === 'Error' ? err.message : `${err.name}: ${err.message}`);
+    setStatus(err.message);
   } finally {
     e.target.value = '';
   }
@@ -305,7 +235,6 @@ document.querySelectorAll('nav button').forEach(b => b.addEventListener('click',
   window.scrollTo(0, 0);
 }));
 
-showKeyInfo();
 fillRange();
 renderAll();
 setInterval(renderAll, 1000 * 20);
