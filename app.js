@@ -307,6 +307,8 @@ $('file').addEventListener('change', async e => {
 });
 
 /* ---------- shell ---------- */
+// No zooming: iOS Safari's pinch (gesture) events are cancelled; double-tap zoom is off via touch-action in style.css.
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault()));
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function renderAll() { renderNow(); renderGrid(); }
 
