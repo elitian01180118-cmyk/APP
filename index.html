@@ -83,7 +83,7 @@
   <!-- NOTE -->
   <section id="view-note" class="view">
     <h2><button id="note-title" type="button"></button></h2>
-    <div id="toolbar" class="toolbar">
+    <div id="toolbar" class="toolbar off">
       <button type="button" id="tb-bold" data-act="bold" aria-label="Bold"><b>B</b></button>
       <button type="button" id="tb-italic" data-act="italic" aria-label="Italic"><i>I</i></button>
       <button type="button" id="tb-underline" data-act="underline" aria-label="Underline"><u>U</u></button>
@@ -99,6 +99,8 @@
       <span class="sep"></span>
       <button type="button" data-act="undo">Undo</button>
       <button type="button" data-act="redo">Redo</button>
+      <span class="sep"></span>
+      <button type="button" data-act="done">Done</button>
     </div>
     <div id="tabletools" class="toolbar" hidden>
       <button type="button" data-op="row+">+ Row</button>
@@ -131,7 +133,7 @@
   </form>
 </dialog>
 
-<script src="app.js?v=7"></script>
-<script src="editor.js?v=1"></script>
+<script src="app.js?v=8"></script>
+<script src="editor.js?v=2"></script>
 </body>
 </html>

@@ -13,12 +13,12 @@ let range = store.get('range', { from: 9, to: 23 });
 
 const pad = n => String(n).padStart(2, '0');
 const todayIdx = () => (new Date().getDay() + 6) % 7;
-const isMeal = s => /^meal$/i.test(s || '');
-// Dim: a per-cell flag (greys the cell out in Week). It belongs to the cell, not to the word in it.
-const autoDim = p => { const o = {}; for (const k of KEYS) for (const [h, t] of Object.entries(p[k] || {})) if (isMeal(t)) (o[k] = o[k] || {})[h] = true; return o; };
-let dim = store.get('dim', null);
-if (dim === null) { dim = autoDim(plan); store.set('dim', dim); }          // first run of this version: existing "meal" cells stay grey
-const isDim = (d, h) => !!(dim[KEYS[d]] || {})[h];
+const hasMeal = s => /meal/i.test(s || '');
+// Dim greys a cell out in Week. A cell whose text contains "meal" is dimmed by itself. Saving the edit dialog stores an explicit
+// choice for that cell (true or false) which then wins over the text, so renaming "meal" to "Dinner" keeps it grey until you switch Dim off.
+let dim = store.get('dim', {});
+const dimFlag = (d, h) => (dim[KEYS[d]] || {})[h];
+const isDim = (d, h) => { const f = dimFlag(d, h); return f !== undefined ? !!f : hasMeal(cell(d, h)); };
 const label = s => s;
 const cell = (d, h) => (plan[KEYS[d]] || {})[h] || '';
 
@@ -88,10 +88,11 @@ $('grid').addEventListener('click', e => {
   const d = +c.dataset.d, h = +c.dataset.h;
   $('dlg-title').textContent = `${DAYS[d]} ${pad(h)}:00`;
   $('dlg-input').value = cell(d, h);
-  $('dlg-dim').checked = isDim(d, h);
+  const wasDim = cell(d, h) !== '' && isDim(d, h);                          // was this cell grey when the dialog opened?
+  $('dlg-dim').checked = wasDim;
   let dimTouched = false;                                                    // until the switch is touched, typing "meal" turns Dim on by itself
   $('dlg-dim').onchange = () => { dimTouched = true; };
-  $('dlg-input').oninput = () => { if (!dimTouched) $('dlg-dim').checked = isMeal($('dlg-input').value.trim()) || isDim(d, h); };
+  $('dlg-input').oninput = () => { if (!dimTouched) $('dlg-dim').checked = hasMeal($('dlg-input').value) || wasDim; };
   $('dlg').returnValue = '';
   $('dlg').showModal();
   $('dlg').onclose = () => {
@@ -99,7 +100,7 @@ $('grid').addEventListener('click', e => {
     const v = $('dlg-input').value.trim();
     const day = (plan[KEYS[d]] = plan[KEYS[d]] || {});
     const dd = (dim[KEYS[d]] = dim[KEYS[d]] || {});
-    if (v) { day[h] = v; if ($('dlg-dim').checked) dd[h] = true; else delete dd[h]; }
+    if (v) { day[h] = v; dd[h] = $('dlg-dim').checked; }
     else { delete day[h]; delete dd[h]; }
     store.set('plan', plan); store.set('dim', dim);
     renderAll();
@@ -293,7 +294,7 @@ $('file').addEventListener('change', async e => {
       }
     });
     if (!hours.length) throw new Error('No entries found in the image');
-    plan = next; dim = autoDim(plan); store.set('plan', plan); store.set('dim', dim);   // a fresh import: "meal" cells start dimmed
+    plan = next; dim = {}; store.set('plan', plan); store.set('dim', dim);   // a fresh import: no explicit choices, text containing "meal" is dimmed automatically
     range = { from: Math.min(range.from, ...hours), to: Math.max(range.to, ...hours) };
     store.set('range', range); fillRange();
     renderAll();

@@ -78,6 +78,11 @@ async function showNote() {
 function saveNow() { clearTimeout(saveTimer); saveTimer = null; if (loaded) return writeSection(noteIdx, ed.innerHTML); }
 function saveSoon() { refreshEmpty(); clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); }
 
+// The toolbar is only there while you are editing: tapping the note (including the blank space below the text) shows it,
+// "Done" or tapping anything outside the note hides it. Pressing a toolbar button never takes the focus away from the note.
+const showTools = on => { $('toolbar').classList.toggle('off', !on); updateToolbar(); };
+ed.addEventListener('focus', () => showTools(true));
+ed.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== ed) { showTools(false); saveNow(); } }, 0));
 ed.addEventListener('input', saveSoon);
 ed.addEventListener('keyup', () => updateToolbar());
 ed.addEventListener('click', () => updateToolbar());
@@ -123,7 +128,7 @@ function updateToolbar() {
     on('tb-ul', document.queryCommandState('insertUnorderedList')); on('tb-ol', document.queryCommandState('insertOrderedList'));
     const b = blockOf(); on('tb-h1', b === 'h1'); on('tb-h2', b === 'h2');
   } catch {}
-  $('tabletools').hidden = !cellOf();
+  $('tabletools').hidden = !(document.activeElement === ed && cellOf());
 }
 
 const BLOCK = /^(P|DIV|H1|H2|H3|LI|TD|TH|BLOCKQUOTE)$/;
@@ -184,9 +189,9 @@ const ACTIONS = {
 document.querySelectorAll('#toolbar [data-act], #tabletools [data-op]').forEach(b => {
   // keep the keyboard and the caret where they are while a toolbar button is pressed
   b.addEventListener('mousedown', e => e.preventDefault());
-  b.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
   b.addEventListener('click', () => {
     if (b.dataset.op) return tableOp(b.dataset.op);
+    if (b.dataset.act === 'done') { ed.blur(); return; }
     restoreSelection();
     // Block commands (lists, headings) can throw the caret to the start of the line in some browsers:
     // remember "which character of the line" it was on and put it back afterwards.
