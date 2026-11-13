@@ -304,8 +304,8 @@ document.querySelectorAll('nav button').forEach(b => b.addEventListener('click',
   window.scrollTo(0, 0);
 }));
 
-$('note').value = store.get('note', '');
-$('note').addEventListener('input', () => store.set('note', $('note').value));
+$('note').value = store.get('note:app', '');
+$('note').addEventListener('input', () => store.set('note:app', $('note').value));
 
 showKeyInfo();
 fillRange();
