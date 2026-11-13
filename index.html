@@ -68,13 +68,47 @@
       <button class="btn seg" data-theme="dark" type="button">Dark</button>
     </div>
 
+    <h3>NOTES BACKUP</h3>
+    <div class="row">
+      <button class="btn seg" id="export-notes" type="button">Export</button>
+      <button class="btn seg" id="restore-notes" type="button">Restore</button>
+    </div>
+    <p class="hint left">Saves this app's three notes, images included, as one file. Notes live only on this phone, so export now and then.</p>
+    <p id="notestatus" class="status"></p>
+    <input id="restore-file" type="file" accept="application/json,.json" hidden>
+
     <button id="clear" class="btn">Clear this week</button>
   </section>
 
   <!-- NOTE -->
   <section id="view-note" class="view">
     <h2><button id="note-title" type="button"></button></h2>
-    <textarea id="note" placeholder="Write here…" spellcheck="false"></textarea>
+    <div id="toolbar" class="toolbar">
+      <button type="button" id="tb-bold" data-act="bold" aria-label="Bold"><b>B</b></button>
+      <button type="button" id="tb-italic" data-act="italic" aria-label="Italic"><i>I</i></button>
+      <button type="button" id="tb-underline" data-act="underline" aria-label="Underline"><u>U</u></button>
+      <span class="sep"></span>
+      <button type="button" id="tb-h1" data-act="h1">H1</button>
+      <button type="button" id="tb-h2" data-act="h2">H2</button>
+      <span class="sep"></span>
+      <button type="button" id="tb-ul" data-act="ul" aria-label="Bulleted list">&bull;</button>
+      <button type="button" id="tb-ol" data-act="ol" aria-label="Numbered list">1.</button>
+      <span class="sep"></span>
+      <button type="button" data-act="table">Table</button>
+      <button type="button" data-act="image">Image</button>
+      <span class="sep"></span>
+      <button type="button" data-act="undo">Undo</button>
+      <button type="button" data-act="redo">Redo</button>
+    </div>
+    <div id="tabletools" class="toolbar" hidden>
+      <button type="button" data-op="row+">+ Row</button>
+      <button type="button" data-op="col+">+ Col</button>
+      <button type="button" data-op="row-">&minus; Row</button>
+      <button type="button" data-op="col-">&minus; Col</button>
+      <button type="button" data-op="table-">Delete table</button>
+    </div>
+    <div id="note" class="editor empty" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Write here…" spellcheck="false"></div>
+    <input id="noteimg" type="file" accept="image/*" hidden>
   </section>
 </main>
 
@@ -96,6 +130,7 @@
   </form>
 </dialog>
 
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
+<script src="editor.js?v=1"></script>
 </body>
 </html>

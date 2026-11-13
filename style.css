@@ -57,8 +57,27 @@ nav button.on{color:var(--fg);font-weight:600}
 dialog{border:0;border-radius:18px;padding:22px;width:min(88vw,360px);box-shadow:0 10px 40px var(--shadow);background:var(--dlg);color:var(--fg)}
 dialog::backdrop{background:rgba(0,0,0,.25)}
 dialog form{margin:0}
-#note{display:block;width:100%;min-height:calc(100vh - 230px);border:0;outline:0;resize:none;background:transparent;
-  color:var(--fg);font:inherit;font-size:17px;line-height:1.7;padding:0}
-#note::placeholder{color:var(--ph)}
+#note{display:block;position:relative;min-height:calc(100vh - 290px);outline:0;color:var(--fg);font-size:17px;line-height:1.7;
+  word-wrap:break-word;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text;caret-color:var(--fg)}
+#note.empty::before{content:attr(data-placeholder);position:absolute;left:0;top:0;color:var(--ph);pointer-events:none}
+#note p,#note div{margin:0 0 .5em}
+#note h1{font-size:24px;line-height:1.3;font-weight:600;margin:.6em 0 .3em}
+#note h2{font-size:20px;line-height:1.3;font-weight:600;margin:.6em 0 .3em}
+#note h3{font-size:17px;font-weight:600;margin:.6em 0 .3em}
+#note ul,#note ol{margin:0 0 .5em;padding-left:24px}
+#note blockquote{margin:0 0 .5em;padding-left:12px;border-left:2px solid var(--line);color:var(--mute)}
+#note table{width:100%;font-size:inherit;table-layout:fixed;border-collapse:collapse;margin:10px 0}
+#note td,#note th{border:1px solid var(--line);padding:8px;height:auto;text-align:left;vertical-align:top;cursor:text;
+  position:static;background:none;font-weight:400;line-height:1.4;word-break:break-word}
+#note th{font-weight:600}
+#note img{display:block;max-width:100%;height:auto;border-radius:8px;margin:8px 0}
+.toolbar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:4px 0 8px;margin:0 0 10px;
+  position:sticky;top:env(safe-area-inset-top);z-index:5;background:var(--bg)}
+.toolbar::-webkit-scrollbar{display:none}
+.toolbar[hidden]{display:none}
+.toolbar button{flex:0 0 auto;min-width:38px;height:34px;padding:0 10px;border:1px solid var(--line);border-radius:8px;
+  background:var(--bg);color:var(--fg);font-size:14px;-webkit-user-select:none;user-select:none}
+.toolbar button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.toolbar .sep{flex:0 0 1px;background:var(--line);margin:4px 2px}
 #note-title{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .row .btn.seg{flex:1}
