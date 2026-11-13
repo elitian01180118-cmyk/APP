@@ -304,8 +304,38 @@ document.querySelectorAll('nav button').forEach(b => b.addEventListener('click',
   window.scrollTo(0, 0);
 }));
 
-$('note').value = store.get('note:app', '');
-$('note').addEventListener('input', () => store.set('note:app', $('note').value));
+// Note: three separate areas; tapping the title cycles through them. 'note:app' (the original single note) is kept as "Notes".
+const SECTIONS = [
+  { name: 'Mental Notes', key: 'note:app:mental' },
+  { name: 'Technical Notes', key: 'note:app:technical' },
+  { name: 'Notes', key: 'note:app' },
+];
+let noteIdx = store.get('note:app:section', 2);
+if (!Number.isInteger(noteIdx) || noteIdx < 0 || noteIdx >= SECTIONS.length) noteIdx = 2;
+function showNote() {
+  $('note-title').textContent = SECTIONS[noteIdx].name;
+  $('note-count').textContent = `${noteIdx + 1}/${SECTIONS.length}`;
+  $('note').value = store.get(SECTIONS[noteIdx].key, '');
+  $('note').scrollTop = 0;
+}
+$('note').addEventListener('input', () => store.set(SECTIONS[noteIdx].key, $('note').value));
+$('note-title').addEventListener('click', () => {
+  noteIdx = (noteIdx + 1) % SECTIONS.length;
+  store.set('note:app:section', noteIdx);
+  showNote();
+});
+showNote();
+
+// Appearance: Light (default) or Dark, remembered on this phone.
+function applyTheme(t) {
+  if (t === 'dark') document.documentElement.dataset.theme = 'dark'; else delete document.documentElement.dataset.theme;
+  $('themecolor').content = t === 'dark' ? '#000000' : '#ffffff';
+  document.querySelectorAll('button[data-theme]').forEach(b => b.classList.toggle('primary', b.dataset.theme === (t === 'dark' ? 'dark' : 'light')));
+}
+document.querySelectorAll('button[data-theme]').forEach(b => b.addEventListener('click', () => {
+  store.set('theme', b.dataset.theme); applyTheme(b.dataset.theme);
+}));
+applyTheme(store.get('theme', 'light'));
 
 showKeyInfo();
 fillRange();
