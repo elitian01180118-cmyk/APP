@@ -314,7 +314,6 @@ let noteIdx = store.get('note:app:section', 2);
 if (!Number.isInteger(noteIdx) || noteIdx < 0 || noteIdx >= SECTIONS.length) noteIdx = 2;
 function showNote() {
   $('note-title').textContent = SECTIONS[noteIdx].name;
-  $('note-count').textContent = `${noteIdx + 1}/${SECTIONS.length}`;
   $('note').value = store.get(SECTIONS[noteIdx].key, '');
   $('note').scrollTop = 0;
 }
