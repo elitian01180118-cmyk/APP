@@ -307,6 +307,10 @@ $('file').addEventListener('change', async e => {
 });
 
 /* ---------- shell ---------- */
+// While any text field (or the note) has the keyboard up, hide the bottom tab bar.
+const isTextTarget = el => el && el.matches && el.matches('textarea,[contenteditable="true"],input:not([type=checkbox]):not([type=file]):not([type=radio]):not([type=button])');
+document.addEventListener('focusin', e => { if (isTextTarget(e.target)) document.body.classList.add('typing'); });
+document.addEventListener('focusout', () => setTimeout(() => { if (!isTextTarget(document.activeElement)) document.body.classList.remove('typing'); }, 0));
 // No zooming: iOS Safari's pinch (gesture) events are cancelled; double-tap zoom is off via touch-action in style.css.
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault()));
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }

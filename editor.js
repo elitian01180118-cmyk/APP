@@ -80,11 +80,28 @@ function saveSoon() { refreshEmpty(); clearTimeout(saveTimer); saveTimer = setTi
 
 // The toolbar is only there while you are editing: tapping the note (including the blank space below the text) shows it,
 // "Done" or tapping anything outside the note hides it. Pressing a toolbar button never takes the focus away from the note.
-const showTools = on => { $('toolbar').classList.toggle('off', !on); updateToolbar(); };
+const showTools = on => { $('tools').classList.toggle('off', !on); updateToolbar(); };
 ed.addEventListener('focus', () => showTools(true));
 ed.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== ed) { showTools(false); saveNow(); } }, 0));
 ed.addEventListener('input', saveSoon);
 ed.addEventListener('keyup', () => updateToolbar());
+let caretRaf = 0;
+function keepCaretVisible() {
+  caretRaf = 0;
+  if (document.activeElement !== ed) return;
+  const s = getSelection(); if (!s.rangeCount) return;
+  const r = s.getRangeAt(0);
+  let rect = r.getClientRects()[0];
+  if (!rect || (!rect.width && !rect.height)) { const n = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement; rect = n && n.getBoundingClientRect(); }
+  if (!rect) return;
+  const vh = window.visualViewport ? visualViewport.height : innerHeight;
+  const bottom = vh - $('tools').offsetHeight - 14, top = 72;                // keep clear of the tools below and the clock above
+  if (rect.bottom > bottom) scrollBy(0, rect.bottom - bottom);
+  else if (rect.top < top && scrollY > 0) scrollBy(0, rect.top - top);
+}
+const caretSoon = () => { if (!caretRaf) caretRaf = requestAnimationFrame(keepCaretVisible); };
+ed.addEventListener('input', caretSoon);
+document.addEventListener('selectionchange', () => { if (document.activeElement === ed) caretSoon(); });
 ed.addEventListener('click', () => updateToolbar());
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
 addEventListener('pagehide', saveNow);
