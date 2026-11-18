@@ -1,6 +1,6 @@
 // Cache names include the app's own address (scope) so APP and APP2 can run this identical file without touching each other's cache.
 const PREFIX = 'gridnow:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v9';
+const CACHE = PREFIX + 'v10';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'editor.js', 'manifest.webmanifest', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(

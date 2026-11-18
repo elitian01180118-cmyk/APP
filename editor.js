@@ -9,7 +9,7 @@ const SECTIONS = [
   { name: 'Mental Notes', key: `note:${APP_ID}:mental` },
   { name: 'Technical Notes', key: `note:${APP_ID}:technical` },
   { name: 'Notes', key: APP_ID === 'app2' ? 'note' : 'note:app' },   // the original single note keeps its old key
-  { name: 'Parenting', key: `note:${APP_ID}:parenting` },
+  { name: 'Parenting, my beloved half, family', key: `note:${APP_ID}:parenting`, aliases: ['Parenting'] },   // aliases: older backup files used this name
 ];   // new areas go at the END: the remembered position (an index) of the existing ones stays valid
 
 // ---------- IndexedDB ----------
@@ -57,7 +57,7 @@ const plainToHtml = t => t.split(/\n/).map(l => l ? `<p>${esc(l)}</p>` : '<p><br
 const ed = document.getElementById('note');            // the contenteditable surface
 let noteIdx = store.get(`note:${APP_ID}:section`, 2);
 if (!Number.isInteger(noteIdx) || noteIdx < 0 || noteIdx >= SECTIONS.length) noteIdx = 2;
-let loaded = false, saveTimer = null, lastRange = null;
+let loaded = false, saveTimer = null, lastRange = null, lastSaved = null;
 
 async function readSection(i) {
   const key = SECTIONS[i].key;
@@ -73,10 +73,15 @@ function refreshEmpty() { ed.classList.toggle('empty', !ed.textContent.trim() &&
 async function showNote() {
   loaded = false;
   $('note-title').textContent = SECTIONS[noteIdx].name;
-  ed.innerHTML = await readSection(noteIdx);
+  ed.innerHTML = (await readSection(noteIdx)) || '<div><br></div>';
+  lastSaved = ed.innerHTML;
   loaded = true; refreshEmpty(); ed.scrollTop = 0; updateToolbar();
 }
-function saveNow() { clearTimeout(saveTimer); saveTimer = null; if (loaded) return writeSection(noteIdx, ed.innerHTML); }
+function saveNow() {
+  clearTimeout(saveTimer); saveTimer = null;
+  if (!loaded || ed.innerHTML === lastSaved) return;                       // nothing changed: do not rewrite
+  lastSaved = ed.innerHTML; return writeSection(noteIdx, lastSaved);
+}
 function saveSoon() { refreshEmpty(); clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); }
 
 // The toolbar is only there while you are editing: tapping the note (including the blank space below the text) shows it,
@@ -86,6 +91,12 @@ ed.addEventListener('focus', () => showTools(true));
 ed.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== ed) { showTools(false); saveNow(); } }, 0));
 ed.addEventListener('input', saveSoon);
 ed.addEventListener('keyup', () => updateToolbar());
+ed.addEventListener('click', ev => {
+  if (ev.target !== ed || document.activeElement === ed) return;            // a tap on empty space inside the note (not on a line of text)
+  ed.focus();
+  const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+});
 let caretRaf = 0;
 function keepCaretVisible() {
   caretRaf = 0;
@@ -237,11 +248,11 @@ async function restoreNotes(file) {
   try {
     const data = JSON.parse(await file.text());
     if (!data || data.app !== 'GridNow' || typeof data.notes !== 'object') throw new Error('Not a GridNow backup file');
-    const names = SECTIONS.map(s => s.name).filter(n => typeof data.notes[n] === 'string');
-    if (!names.length) throw new Error('No notes found in this file');
-    if (!confirm(`Replace these notes with the backup?\n${names.join(', ')}`)) return;
-    for (const n of names) await writeSection(SECTIONS.findIndex(s => s.name === n), sanitize(data.notes[n]));
-    await showNote(); say(`Restored ${names.length} note area(s)`);
+    const found = SECTIONS.map((s, i) => [i, [s.name, ...(s.aliases || [])].find(n => typeof data.notes[n] === 'string')]).filter(([, n]) => n);
+    if (!found.length) throw new Error('No notes found in this file');
+    if (!confirm(`Replace these notes with the backup?\n${found.map(([i]) => SECTIONS[i].name).join(', ')}`)) return;
+    for (const [i, n] of found) await writeSection(i, sanitize(data.notes[n]));
+    await showNote(); say(`Restored ${found.length} note area(s)`);
   } catch (e) { say('Restore failed: ' + e.message); }
 }
 $('export-notes').addEventListener('click', exportNotes);
