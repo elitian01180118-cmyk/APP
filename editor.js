@@ -1,5 +1,5 @@
 'use strict';
-/* Rich-text Note: three sections, stored in IndexedDB (not localStorage), with backup / restore.
+/* Rich-text Note: several sections (Mental Notes, Technical Notes, Notes, Parenting), stored in IndexedDB (not localStorage), with backup / restore.
    Uses a contenteditable surface; no external libraries, works offline. */
 
 // ---------- which app / which sections ----------
@@ -9,7 +9,8 @@ const SECTIONS = [
   { name: 'Mental Notes', key: `note:${APP_ID}:mental` },
   { name: 'Technical Notes', key: `note:${APP_ID}:technical` },
   { name: 'Notes', key: APP_ID === 'app2' ? 'note' : 'note:app' },   // the original single note keeps its old key
-];
+  { name: 'Parenting', key: `note:${APP_ID}:parenting` },
+];   // new areas go at the END: the remembered position (an index) of the existing ones stays valid
 
 // ---------- IndexedDB ----------
 const idb = (() => {
@@ -220,7 +221,7 @@ document.querySelectorAll('#toolbar [data-act], #tabletools [data-op]').forEach(
 });
 $('noteimg').addEventListener('change', e => { const f = e.target.files[0]; if (f) insertImage(f); e.target.value = ''; });
 
-// ---------- backup / restore (this app's three sections) ----------
+// ---------- backup / restore (all of this app's note sections) ----------
 async function exportNotes() {
   await saveNow();
   const notes = {};
