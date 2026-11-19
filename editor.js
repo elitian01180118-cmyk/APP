@@ -1,5 +1,5 @@
 'use strict';
-/* Rich-text Note: several sections (Mental Notes, Technical Notes, Notes, Parenting), stored in IndexedDB (not localStorage), with backup / restore.
+/* Rich-text Note: several sections (Mental Notes, Technical Notes, Notes, Parenting, Self Growth), stored in IndexedDB (not localStorage), with backup / restore.
    Uses a contenteditable surface; no external libraries, works offline. */
 
 // ---------- which app / which sections ----------
@@ -10,6 +10,7 @@ const SECTIONS = [
   { name: 'Technical Notes', key: `note:${APP_ID}:technical` },
   { name: 'Notes', key: APP_ID === 'app2' ? 'note' : 'note:app' },   // the original single note keeps its old key
   { name: 'Parenting, my beloved half, family', key: `note:${APP_ID}:parenting`, aliases: ['Parenting'] },   // aliases: older backup files used this name
+  { name: 'Self Growth', key: `note:${APP_ID}:selfgrowth` },
 ];   // new areas go at the END: the remembered position (an index) of the existing ones stays valid
 
 // ---------- IndexedDB ----------
